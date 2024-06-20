@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strengthening Mobile App Security: PBKDF2, bcrypt, and scrypt for Android and iOS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ddd;
+            overflow-x: auto;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+            background: #f4f4f4;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Strengthening Mobile App Security: PBKDF2, bcrypt, and scrypt for Android and iOS</h1>
+    <p>In today's mobile-driven world, securing user passwords is more critical than ever. With the increasing sophistication of cyberattacks, using robust password hashing techniques in mobile applications is essential. This article explores three powerful password hashing methods—PBKDF2, bcrypt, and scrypt—and demonstrates their implementation in Android and iOS apps.</p>
+
+    <h2>What is Password Hashing?</h2>
+    <p>Password hashing is a cryptographic process that converts a password into a fixed-size string of characters, known as a digest. This process ensures that even minor changes to the password result in a completely different hash.</p>
+
+    <h2>Why Use Hashing?</h2>
+    <ul>
+        <li><strong>Security</strong>: Hashing secures passwords by ensuring they cannot be easily reversed.</li>
+        <li><strong>Integrity</strong>: Hashes ensure that passwords have not been tampered with.</li>
+        <li><strong>Efficiency</strong>: Modern hashing algorithms provide a good balance between security and performance.</li>
+    </ul>
+
+    <h2>PBKDF2 (Password-Based Key Derivation Function 2)</h2>
+    <h3>Overview</h3>
+    <p>PBKDF2 is a widely used key derivation function defined in RFC 2898. It uses a pseudorandom function (e.g., HMAC-SHA-256) and applies it repeatedly to the input password along with a salt to produce a derived key.</p>
+
+    <h3>Key Features</h3>
+    <ul>
+        <li><strong>Configurable Iterations</strong>: Adjustable number of iterations increases computational cost.</li>
+        <li><strong>Widely Supported</strong>: Available in many libraries and languages.</li>
+        <li><strong>Compliance</strong>: Often required for compliance with standards (e.g., NIST).</li>
+    </ul>
+
+    <h3>Implementation in Android (Kotlin)</h3>
+    <pre><code class="language-kotlin">import java.security.spec.KeySpec
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
+
+fun deriveKey(password: CharArray, salt: ByteArray, iterations: Int, keyLength: Int): ByteArray {
+    val spec: KeySpec = PBEKeySpec(password, salt, iterations, keyLength)
+    val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+    return factory.generateSecret(spec).encoded
+}
+    </code></pre>
+
+    <h3>Implementation in iOS (Swift)</h3>
+    <pre><code class="language-swift">import CommonCrypto
+
+func pbkdf2Hash(password: String, salt: Data, keyLength: Int, rounds: Int) -> Data? {
+    var derivedKey = Data(repeating: 0, count: keyLength)
+    let derivationStatus = derivedKey.withUnsafeMutableBytes { derivedKeyBytes in
+        salt.withUnsafeBytes { saltBytes in
+            CCKeyDerivationPBKDF(
+                CCPBKDFAlgorithm(kCCPBKDF2),
+                password, password.utf8.count,
+                saltBytes.bindMemory(to: UInt8.self).baseAddress, salt.count,
+                CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
+                UInt32(rounds),
+                derivedKeyBytes.bindMemory(to: UInt8.self).baseAddress, keyLength)
+        }
+    }
+    return derivationStatus == kCCSuccess ? derivedKey : nil
+}
+    </code></pre>
+
+    <h2>bcrypt</h2>
+    <h3>Overview</h3>
+    <p>bcrypt is based on the Blowfish cipher and introduces a "work factor" that makes the hashing process computationally expensive, enhancing security against brute-force attacks.</p>
+
+    <h3>Key Features</h3>
+    <ul>
+        <li><strong>Work Factor</strong>: Controls the computational cost of hashing.</li>
+        <li><strong>Memory Usage</strong>: Uses a moderate amount of memory to resist hardware attacks.</li>
+        <li><strong>Built-In Salt Handling</strong>: Automatically handles salt generation and storage within the hash string.</li>
+    </ul>
+
+    <h3>Implementation in Android (Kotlin)</h3>
+    <pre><code class="language-kotlin">import org.mindrot.jbcrypt.BCrypt
+
+fun hashPassword(password: String, workFactor: Int = 12): String {
+    return BCrypt.hashpw(password, BCrypt.gensalt(workFactor))
+}
+
+fun checkPassword(plainPassword: String, hashedPassword: String): Boolean {
+    return BCrypt.checkpw(plainPassword, hashedPassword)
+}
+    </code></pre>
+
+    <h3>Implementation in iOS (Swift)</h3>
+    <p>For iOS, bcrypt is not included in the standard libraries. You can use a library like Swift bcrypt. Here's an example using the Swift bcrypt library:</p>
+    <pre><code class="language-swift">import SwiftBcrypt
+
+func hashPassword(password: String) -> String? {
+    return try? Bcrypt.hash(password)
+}
+
+func verifyPassword(password: String, hashed: String) -> Bool {
+    return (try? Bcrypt.verify(password, created: hashed)) ?? false
+}
+    </code></pre>
+
+    <h2>scrypt</h2>
+    <h3>Overview</h3>
+    <p>scrypt is designed to be both CPU and memory-intensive, making it highly resistant to parallel attacks. It is particularly suitable for high-security applications.</p>
+
+    <h3>Key Features</h3>
+    <ul>
+        <li><strong>Memory-Intensive</strong>: Requires a large amount of memory, increasing resistance to hardware attacks.</li>
+        <li><strong>Configurable Parameters</strong>: Allows adjustment of CPU, memory, and parallelization costs.</li>
+        <li><strong>Future-Proof</strong>: Its resource-intensive nature ensures it remains secure against future advances in hardware.</li>
+    </ul>
+
+    <h3>Implementation in Android (Kotlin)</h3>
+    <pre><code class="language-kotlin">import org.bouncycastle.crypto.generators.SCrypt
+import java.security.SecureRandom
+import java.util.Base64
+
+fun hashPassword(password: String, salt: ByteArray, N: Int = 16384, r: Int = 8, p: Int = 1, dkLen: Int = 32): String {
+    val derivedKey = SCrypt.generate(password.toByteArray(), salt, N, r, p, dkLen)
+    val saltBase64 = Base64.getEncoder().encodeToString(salt)
+    val derivedKeyBase64 = Base64.getEncoder().encodeToString(derivedKey)
+    return "$saltBase64:$derivedKeyBase64"
+}
+
+fun generateSalt(length: Int = 16): ByteArray {
+    val salt = ByteArray(length)
+    SecureRandom().nextBytes(salt)
+    return salt
+}
+
+fun verifyPassword(password: String, storedHash: String, N: Int = 16384, r: Int = 8, p: Int = 1, dkLen: Int = 32): Boolean {
+    val parts = storedHash.split(":")
+    if (parts.size != 2) return false
+
+    val salt = Base64.getDecoder().decode(parts[0])
+    val storedDerivedKey = Base64.getDecoder().decode(parts[1])
+
+    val derivedKey = SCrypt.generate(password.toByteArray(), salt, N, r, p, dkLen)
+    return derivedKey.contentEquals(storedDerivedKey)
+}
+    </code></pre>
+
+    <h3>Implementation in iOS (Swift)</h3>
+    <p>For iOS, scrypt is not included in the standard libraries. You can use a library like SwiftySCrypt. Here’s an example using the SwiftySCrypt library:</p>
+    <pre><code class="language-swift">import SwiftySCrypt
+
+func hashPassword(password: String, salt: Data) -> String? {
+    let params = try? ScryptParams(N: 16384, r: 8, p: 1)
+    let hash = try? Scrypt(password: password, salt: salt, params: params).calculate()
+    return hash?.base64EncodedString()
+}
+
+func generateSalt(length: Int = 16) -> Data {
+    var salt = Data(count: length)
+    _ = salt.withUnsafeMutableBytes { SecRandomCopyBytes(kSecRandomDefault, length, $0.baseAddress!) }
+    return salt
+}
+
+func verifyPassword(password: String, salt: Data, hash: String) -> Bool {
+    let params = try? ScryptParams(N: 16384, r: 8, p: 1)
+    let newHash = try? Scrypt(password: password, salt: salt, params: params).calculate()
+    return newHash?.base64EncodedString() == hash
+}
+    </code></pre>
+
+    <h2>Conclusion</h2>
+    <p>Choosing the right password hashing algorithm is crucial for maintaining security in any mobile application. PBKDF2, bcrypt, and scrypt each offer unique advantages and can be selected based on the specific security needs and performance considerations of your Android or iOS application. By understanding and implementing these hashing methods, you can significantly enhance the security of user passwords and protect against various types of attacks.</p>
+
+    <h2>Call to Action</h2>
+    <p>If you found this article helpful, consider sharing it with your network. For more insights into mobile security and cryptography, follow me on Medium!</p>
+</body>
+</html>
